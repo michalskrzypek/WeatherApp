@@ -1,4 +1,4 @@
-package com.michalskrzypek.jsondemo;
+package com.michalskrzypek.weather;
 
 import org.junit.Test;
 

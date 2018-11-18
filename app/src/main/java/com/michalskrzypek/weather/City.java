@@ -1,20 +1,42 @@
-package com.michalskrzypek.jsondemo;
+package com.michalskrzypek.weather;
 
 import android.graphics.Bitmap;
 
 public class City {
 
-    private String fullName;
+    private String name;
+    private String state;
+    private String country;
     private String weather;
     private String temperature;
     private Bitmap icon;
 
-    public String getFullName() {
-        return fullName;
+    public String getName() {
+        return name;
     }
 
-    public void setFullName(String fullName) {
-        this.fullName = fullName;
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public String getState() {
+        return state;
+    }
+
+    public void setState(String state) {
+        this.state = state;
+    }
+
+    public String getCountry() {
+        return country;
+    }
+
+    public void setCountry(String country) {
+        this.country = country;
+    }
+
+    public String getFullName() {
+        return getName() + ", " + getState() + ", " + getCountry();
     }
 
     public String getWeather() {
@@ -58,8 +80,18 @@ public class City {
             return this.city;
         }
 
-        public Builder fullName(String fullName) {
-            this.city.fullName = fullName;
+        public Builder name(String name) {
+            this.city.name = name;
+            return this;
+        }
+
+        public Builder state(String state) {
+            this.city.state= state;
+            return this;
+        }
+
+        public Builder country(String country) {
+            this.city.country= country;
             return this;
         }
 

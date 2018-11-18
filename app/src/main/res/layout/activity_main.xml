@@ -7,7 +7,7 @@
     android:background="@drawable/background"
     android:weightSum="2"
     android:orientation="vertical"
-    tools:context="com.michalskrzypek.jsondemo.MainActivity">
+    tools:context="com.michalskrzypek.weather.MainActivity">
 <LinearLayout
     android:layout_weight="1"
     android:layout_width="match_parent"

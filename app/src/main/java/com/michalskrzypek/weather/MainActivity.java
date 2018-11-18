@@ -1,4 +1,4 @@
-package com.michalskrzypek.jsondemo;
+package com.michalskrzypek.weather;
 
 import android.content.Context;
 import android.graphics.Bitmap;
@@ -9,7 +9,6 @@ import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.support.v7.app.AppCompatActivity;
-import android.util.Log;
 import android.view.View;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
@@ -28,7 +27,6 @@ import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.util.concurrent.ExecutionException;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -103,14 +101,18 @@ public class MainActivity extends AppCompatActivity {
 
             JSONObject jsonObject = null;
             String iconUrl = null;
-            String fullName = null;
+            String cityName = null;
+            String state = null;
+            String country = null;
             String weather = null;
             String temp = null;
             try {
                 jsonObject = new JSONObject(getJsonString(params[0]));
                 iconUrl = jsonObject.getJSONObject("current_observation").getString("icon_url");
                 downImage.execute(iconUrl);
-                fullName = jsonObject.getJSONObject("current_observation").getJSONObject("display_location").getString("full");
+                cityName = jsonObject.getJSONObject("current_observation").getJSONObject("display_location").getString("city");
+                state = jsonObject.getJSONObject("current_observation").getJSONObject("display_location").getString("state");
+                country = jsonObject.getJSONObject("current_observation").getJSONObject("display_location").getString("country");
                 weather = jsonObject.getJSONObject("current_observation").getString("weather");
                 temp = jsonObject.getJSONObject("current_observation").getString("temperature_string");
             } catch (JSONException e1) {
@@ -118,7 +120,9 @@ public class MainActivity extends AppCompatActivity {
             }
 
             return new City.Builder()
-                    .fullName(fullName)
+                    .name(cityName)
+                    .state(state)
+                    .country(country)
                     .weather(weather)
                     .temperature(temp)
                     .build();
@@ -142,7 +146,6 @@ public class MainActivity extends AppCompatActivity {
             } catch (IOException e) {
                 e.printStackTrace();
             }
-            Log.i("CO TAM - JSON", sb.toString());
             return sb.toString();
         }
 
@@ -153,7 +156,6 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    //http://api.wunderground.com/api/68e30bc28522004d/conditions/q/CA/San_Francisco.json
     public class DownloadImage extends AsyncTask<String, Void, Bitmap> {
 
         @Override
@@ -178,7 +180,6 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void setWeather(City city) {
-        Log.d(Log.getStackTraceString(new Throwable()), "setWeather: " + city.getFullName());
         tvCity.setText(city.getFullName());
         tvWeather.setText(city.getWeather());
         tvTemp.setText(city.getTemperature());

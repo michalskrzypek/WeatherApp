@@ -1,4 +1,4 @@
-package com.michalskrzypek.jsondemo;
+package com.michalskrzypek.weather;
 
 import android.content.Context;
 import android.support.test.InstrumentationRegistry;
