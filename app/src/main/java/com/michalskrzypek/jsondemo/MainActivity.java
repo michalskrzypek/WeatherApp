@@ -3,18 +3,21 @@ package com.michalskrzypek.jsondemo;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.os.AsyncTask;
-import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.os.IBinder;
+import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
+import android.view.View;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
-import android.widget.SeekBar;
 import android.widget.TextView;
+import android.widget.Toast;
 
-import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -27,127 +30,161 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.concurrent.ExecutionException;
 
-import android.view.View;
-import android.widget.Toast;
-
 public class MainActivity extends AppCompatActivity {
-    Button theButton;
-    EditText cityName, stateName;
-    TextView cityView, weatherView,  weatherOutput;
-    ImageView weatherImage;
-String fullName, city, state, weather, temp, iconString;
-DownloadImage downImage;
-    String cityBeta;
+
+    private Button theButton;
+    private EditText etCityName, etStateName;
+    private TextView tvCity, tvWeather, tvTemp;
+    private ImageView imgWeather;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        etCityName = (EditText) findViewById(R.id.cityName);
+        etStateName = (EditText) findViewById(R.id.stateName);
+        tvCity = (TextView) findViewById(R.id.tvCity);
+        tvWeather = (TextView) findViewById(R.id.tvWeather);
+        tvTemp = (TextView) findViewById(R.id.tvTemperature);
+        imgWeather = (ImageView) findViewById(R.id.imgWeather);
         theButton = (Button) findViewById(R.id.theButton);
-        cityName = (EditText) findViewById(R.id.cityName);
-        stateName = (EditText) findViewById(R.id.stateName);
-        weatherOutput = (TextView) findViewById(R.id.weatherOutput);
-        cityView = (TextView) findViewById(R.id.cityView);
-        weatherView = (TextView) findViewById(R.id.weatherView);
-        weatherImage= (ImageView) findViewById(R.id.weatherImage);
-
+        theButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                getWeather();
+            }
+        });
     }
 
-    public void getWeather(View view){
-        cityBeta = cityName.getText().toString();
-       city = cityBeta.replaceAll(" ", "_");
+    private void getWeather() {
+        if (checkConnection(this)) {
+            String cityName = etCityName.getText().toString();
+            cityName = cityName.replaceAll(" ", "_");
+            String stateName = etStateName.getText().toString().toUpperCase();
 
-        InputMethodManager mngr = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
-        mngr.hideSoftInputFromWindow(cityName.getWindowToken(), 0);
+            DownloadContent downloadContent = new DownloadContent();
+            downloadContent.execute("http://api.wunderground.com/api/68e30bc28522004d/conditions/q/" + stateName + "/" + cityName + ".json");
 
-        state = stateName.getText().toString().toUpperCase();
-
-        DownloadContent downloadContent = new DownloadContent();
-        downloadContent.execute("http://api.wunderground.com/api/68e30bc28522004d/conditions/q/"+state+"/"+city+".json");
-
-    }
-//http://api.wunderground.com/api/68e30bc28522004d/conditions/q/CA/San_Francisco.json
-public class DownloadImage extends AsyncTask<String, Void, Bitmap>{
-
-    @Override
-    protected Bitmap doInBackground(String... params) {
-
-        try {
-            URL iconURL = new URL(params[0]);
-            HttpURLConnection theConnection = (HttpURLConnection) iconURL.openConnection();
-            InputStream in = null;
-            in = theConnection.getInputStream();
-            Bitmap iconLOL = BitmapFactory.decodeStream(in);
-            return iconLOL;
-        } catch (IOException e) {
-            e.printStackTrace();
+            hideKeyboard(etStateName.getWindowToken());
         }
-
-
-        return null;
     }
-}
 
-public class DownloadContent extends AsyncTask<String, Void, String>{
+    public boolean checkConnection(Context context) {
+        if (isOnline()) {
+            Toast.makeText(context, "You are connected to Internet", Toast.LENGTH_SHORT).show();
+            return true;
+        } else {
+            Toast.makeText(context, "You are not connected to Internet", Toast.LENGTH_SHORT).show();
+            return false;
+        }
+    }
+
+    private boolean isOnline() {
+        ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+        NetworkInfo netInfo = cm.getActiveNetworkInfo();
+        if (netInfo != null && netInfo.isConnectedOrConnecting()) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    private void hideKeyboard(IBinder windowToken) {
+        InputMethodManager mngr = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+        mngr.hideSoftInputFromWindow(windowToken, 0);
+    }
+
+    public class DownloadContent extends AsyncTask<String, Void, City> {
 
         @Override
-        protected String doInBackground(String... params) {
+        protected City doInBackground(String... params) {
+            DownloadImage downImage = new DownloadImage();
 
-            StringBuffer sb = new StringBuffer("");
-            String result = "";
+            JSONObject jsonObject = null;
+            String iconUrl = null;
+            String fullName = null;
+            String weather = null;
+            String temp = null;
             try {
-                URL url = new URL(params[0]);
+                jsonObject = new JSONObject(getJsonString(params[0]));
+                iconUrl = jsonObject.getJSONObject("current_observation").getString("icon_url");
+                downImage.execute(iconUrl);
+                fullName = jsonObject.getJSONObject("current_observation").getJSONObject("display_location").getString("full");
+                weather = jsonObject.getJSONObject("current_observation").getString("weather");
+                temp = jsonObject.getJSONObject("current_observation").getString("temperature_string");
+            } catch (JSONException e1) {
+                e1.printStackTrace();
+            }
+
+            return new City.Builder()
+                    .fullName(fullName)
+                    .weather(weather)
+                    .temperature(temp)
+                    .build();
+        }
+
+        private String getJsonString(String urlString) {
+            StringBuffer sb = new StringBuffer();
+            try {
+                URL url = new URL(urlString);
                 HttpURLConnection urlConnection = (HttpURLConnection) url.openConnection();
                 urlConnection.connect();
                 InputStream in = urlConnection.getInputStream();
                 InputStreamReader reader = new InputStreamReader(in);
                 BufferedReader br = new BufferedReader(reader);
-                String line = br.readLine();
-
-                while(line != null){
+                String line;
+                while ((line = br.readLine()) != null) {
                     sb.append(line);
-                    line = br.readLine();
                 }
-                result = sb.toString();
-
-                return result;
-
             } catch (MalformedURLException e) {
                 e.printStackTrace();
             } catch (IOException e) {
                 e.printStackTrace();
             }
-            return null;
+            Log.i("CO TAM - JSON", sb.toString());
+            return sb.toString();
         }
 
         @Override
-        protected void onPostExecute(String s) {
-            super.onPostExecute(s);
-            downImage = new DownloadImage();
+        protected void onPostExecute(City city) {
+            super.onPostExecute(city);
+            setWeather(city);
+        }
+    }
 
+    //http://api.wunderground.com/api/68e30bc28522004d/conditions/q/CA/San_Francisco.json
+    public class DownloadImage extends AsyncTask<String, Void, Bitmap> {
+
+        @Override
+        protected Bitmap doInBackground(String... params) {
+            Bitmap icon = null;
             try {
-                JSONObject jsonObject = new JSONObject(s);
-    iconString = jsonObject.getJSONObject("current_observation").getString("icon_url");
-    weatherImage.setImageBitmap(downImage.execute(iconString).get());
-
-    fullName = jsonObject.getJSONObject("current_observation").getJSONObject("display_location").getString("full");
-    cityView.setText(fullName);
-
-    weather = jsonObject.getJSONObject("current_observation").getString("weather");
-    weatherView.setText(weather);
-
-    temp = jsonObject.getJSONObject("current_observation").getString("temperature_string");
-    weatherOutput.setText(temp);
-
-
-            } catch (JSONException e) {
-                Toast.makeText(MainActivity.this, "Could not find weather", Toast.LENGTH_SHORT).show();
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            } catch (ExecutionException e) {
+                URL iconResource = new URL(params[0]);
+                HttpURLConnection theConnection = (HttpURLConnection) iconResource.openConnection();
+                InputStream in = theConnection.getInputStream();
+                icon = BitmapFactory.decodeStream(in);
+            } catch (IOException e) {
                 e.printStackTrace();
             }
+            return icon;
         }
 
+        @Override
+        protected void onPostExecute(Bitmap bitmap) {
+            super.onPostExecute(bitmap);
+            setWeatherIcon(bitmap);
+        }
+    }
+
+    private void setWeather(City city) {
+        Log.d(Log.getStackTraceString(new Throwable()), "setWeather: " + city.getFullName());
+        tvCity.setText(city.getFullName());
+        tvWeather.setText(city.getWeather());
+        tvTemp.setText(city.getTemperature());
+    }
+
+    private void setWeatherIcon(Bitmap icon) {
+        imgWeather.setImageBitmap(icon);
     }
 }
